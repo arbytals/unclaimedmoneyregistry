@@ -1,11 +1,13 @@
 export function MoneySidebar() {
   return (
-    <div className="bg-primaryYellow text-white max-w-xs ml-0 xl:ml-14 w-full py-8 px-5 rounded-xl space-y-12 border-t-4 border-white">
+    <div className="bg-primaryYellow text-white max-w-xs ml-0 xl:ml-14 w-full py-8 px-5 rounded-xl space-y-12 border-t-4 border border-white">
       <div className="text-center space-y-3">
         <h3 className="text-base font-medium">
           The total amount of unclaimed money currently in our database is:
         </h3>
-        <p className="text-2xl font-medium text-primaryBlue">$490,769,168.36</p>
+        <p className="text-2xl font-medium text-primaryBlue pb-8 border-b-2 border-white/80">
+          $490,769,168.36
+        </p>
       </div>
 
       <div className="space-y-1 text-center">
