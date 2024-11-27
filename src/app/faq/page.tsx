@@ -44,10 +44,10 @@ export default function FAQ() {
               <p>
                 The Registry of Unclaimed Money charges a commission that is
                 only payable if the unclaimed money is confirmed as lost and
-                successfully claimed on your behalf. That means there are no 'up
-                front' fees. Upon the completion of the asset recovery process
-                we retain our fee and forward you the balance by a trust cheque
-                or a deposit into your nominated bank account.
+                successfully claimed on your behalf. That means there are no
+                &apos;up front&apos; fees. Upon the completion of the asset
+                recovery process we retain our fee and forward you the balance
+                by a trust cheque or a deposit into your nominated bank account.
               </p>
               <p>There are no fees to process your unclaimed money claim.</p>
             </section>
@@ -95,6 +95,57 @@ export default function FAQ() {
               <p>
                 The process of updating the database is continual, updated
                 monthly. We endeavour to keep the data as fresh as possible.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-xl font-semibold mb-2">
+                Requirements for proof of address
+              </h2>
+              <p>
+                We deal with various organisations and each one has different
+                documentary requirements. Most organisations require 100 points
+                of identity and all documents need to be certified copies. You
+                will also need to provide evidence to the unclaimed money.
+                Documents required as a connection to the last known address
+                include:
+              </p>
+              <ul className="list-disc pl-6 space-y-2 mt-2">
+                <li>
+                  Correspondence with the organisation that lodged the unclaimed
+                  money
+                </li>
+                <li>Council rate notice</li>
+                <li>Gas or electricity bill</li>
+              </ul>
+            </section>
+
+            <section>
+              <h2 className="text-xl font-semibold mb-2">
+                Requirements as proof of a relevant link to the organisation
+                that lodged the unclaimed money:
+              </h2>
+              <ul className="list-disc pl-6 space-y-2">
+                <li>Premium Certificates issued from the organisation</li>
+                <li>Correspondence from the organisation</li>
+                <li>Any Statements or Share certificates</li>
+              </ul>
+              <p className="mt-2">
+                A Signed Authority to Release Form is included in our
+                information pack.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-xl font-semibold mb-2">
+                If I am providing personal information how is my privacy
+                protected?
+              </h2>
+              <p>
+                All personal information is kept in the strictest confidence. We
+                only provide your details to third parties when required by the
+                custodian/s of the unclaimed money to prove your entitlement to
+                the claim.
               </p>
             </section>
           </div>
