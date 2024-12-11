@@ -7,7 +7,7 @@ import { SiteFooter } from "@/components/footer";
 
 export const metadata: Metadata = {
   title:
-    "CFind Lost Money - The Registry of Unclaimed Money Australia &amp; New Zealand",
+    "Find Lost Money - The Registry of Unclaimed Money Australia &amp; New Zealand",
   description:
     "Our FREE search collaborates all of the information kept on Australian &amp; New Zealand Government databases and makes it easy for you to find any money that is owing to you, your family and your friends.",
 };
