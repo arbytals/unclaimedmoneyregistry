@@ -3,11 +3,10 @@
   "outputDirectory": ".next",
   "installCommand": "pnpm install",
   "framework": "nextjs",
-  "regions": ["all"],
   "functions": {
     "api/search.ts": {
       "memory": 1024,
-      "maxDuration": 60
+      "maxDuration": 10
     }
   }
 }
