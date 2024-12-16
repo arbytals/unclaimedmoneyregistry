@@ -132,7 +132,7 @@ export default function Home() {
                 }
               />
               <Button
-                className="bg-primaryYellow"
+                className="bg-primaryYellow hover:bg-primaryBlue"
                 type="submit"
                 disabled={loading}>
                 {loading ? <Loader2 className="animate-spin" /> : "SEARCH"}
@@ -154,7 +154,7 @@ export default function Home() {
                 }
               />
               <Button
-                className="bg-primaryYellow"
+                className="bg-primaryYellow hover:bg-primaryBlue"
                 type="submit"
                 disabled={loading}>
                 {loading ? <Loader2 className="animate-spin" /> : "SEARCH"}
@@ -172,7 +172,7 @@ export default function Home() {
               </h3>
               {results.map((result, idx) => (
                 <div key={idx} className="p-4 border rounded-lg shadow-md">
-                  <h3 className="font-extrabold text-primaryBlue py-4">
+                  <h3 className="font-bold text-primaryBlue py-4">
                     {result.name}
                   </h3>
                   <p className="font-semibold">

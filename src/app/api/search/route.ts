@@ -8,8 +8,8 @@ import {
 } from "@/types/search";
 import { NextResponse } from "next/server";
 
-// Utility function for waiting and handling page load
-async function waitForPageLoad(page: Page, timeout: number = 120000) {
+// Adjusted for 10s limit
+async function waitForPageLoad(page: Page, timeout: number = 10000) {
   try {
     await Promise.all([
       page.waitForLoadState("domcontentloaded", { timeout }),
@@ -20,35 +20,29 @@ async function waitForPageLoad(page: Page, timeout: number = 120000) {
   }
 }
 
-// Robust result extraction function
+// Result extraction function remains the same
 function extractResults(html: string): SearchResult[] {
   try {
     const $ = load(html);
     const results: SearchResult[] = [];
-
-    // Target the main results table inside the #printdiv11 div
     const table = $("#printdiv11 table#example");
 
-    // Process each row in tbody
     table.find("tbody tr").each((_, row) => {
       const $row = $(row);
       const cells = $row.find("td.search_row");
 
-      // Only process if we have the expected cells
       if (cells.length >= 4) {
         const result: SearchResult = {
           name: $(cells[0]).text().trim(),
           address: $(cells[1]).text().trim(),
           amount: (() => {
             const rawAmount = $(cells[2]).text().trim();
-            // More robust amount parsing
             const cleanAmount = rawAmount.replace(/[^\d.]/g, "");
             return parseFloat(cleanAmount) || 0;
           })(),
           type: $(cells[3]).text().trim(),
         };
 
-        // Additional validation
         if (result.name && result.address && result.amount > 0 && result.type) {
           results.push(result);
         }
@@ -62,11 +56,10 @@ function extractResults(html: string): SearchResult[] {
   }
 }
 
-// Comprehensive scraping function with multiple strategies
 async function scrapeWebsite(
   page: Page,
   params: SearchParams,
-  retries: number = 3
+  retries: number = 5
 ): Promise<SearchResult[]> {
   const searchSelectors = {
     companyNameInput: [
@@ -96,11 +89,10 @@ async function scrapeWebsite(
     ],
   };
 
-  // Dynamic selector finding helper
   async function findSelector(selectors: string[]): Promise<string> {
     for (const selector of selectors) {
       try {
-        await page.waitForSelector(selector, { timeout: 100000 });
+        await page.waitForSelector(selector, { timeout: 10000 });
         return selector;
       } catch {}
     }
@@ -111,16 +103,13 @@ async function scrapeWebsite(
     try {
       console.log(`Scraping attempt ${attempt}...`);
 
-      // Navigate to the website
       await page.goto("https://findunclaimedmoney.com.au", {
-        waitUntil: "networkidle",
-        timeout: 90000,
+        waitUntil: "domcontentloaded",
+        timeout: 10000,
       });
 
-      // Wait for initial page load
       await waitForPageLoad(page);
 
-      // Perform search based on input type
       if ("companyName" in params) {
         const companyInputSelector = await findSelector(
           searchSelectors.companyNameInput
@@ -147,57 +136,46 @@ async function scrapeWebsite(
         await page.click(personalButtonSelector);
       }
 
-      // Wait for results with multiple strategies
+      // Maximized timeouts while keeping buffer
       await Promise.race([
         page.waitForSelector("#printdiv11 table#example tbody tr", {
-          timeout: 100000,
+          timeout: 10000,
         }),
-        page.waitForSelector(".search-results", { timeout: 80000 }),
+        page.waitForSelector(".search-results", { timeout: 10000 }),
       ]);
 
-      // Get page content
       const html = await page.content();
-
-      // Extract results
       const results = extractResults(html);
 
-      // If results found, return them
       if (results.length > 0) {
         return results;
       }
 
-      // If no results, throw error to trigger retry
       if (attempt === retries) {
         throw new Error("No results found after all attempts");
       }
 
-      // Wait before retrying
-      await page.waitForTimeout(1500);
+      // Increased retry wait but still keeping buffer
+      await page.waitForTimeout(750);
     } catch (error) {
       console.error(`Scraping attempt ${attempt} failed:`, error);
-
-      // If last attempt, rethrow the error
       if (attempt === retries) {
         throw error;
       }
     }
   }
 
-  // Fallback return (should not reach here due to earlier throw)
   return [];
 }
 
-// Main API handler
 export async function POST(
   request: Request
 ): Promise<NextResponse<SearchResponse | SearchError>> {
   let browser: Browser | null = null;
 
   try {
-    // Parse and validate input parameters
     const params = (await request.json()) as SearchParams;
 
-    // Input validation
     if ("companyName" in params) {
       if (!params.companyName?.trim()) {
         return NextResponse.json(
@@ -214,7 +192,6 @@ export async function POST(
       }
     }
 
-    // Launch browser with comprehensive options
     browser = await chromium.launch({
       headless: true,
       args: [
@@ -225,24 +202,20 @@ export async function POST(
       ],
     });
 
-    // Create a new browser context with custom settings
     const context = await browser.newContext({
       userAgent:
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
       viewport: { width: 1280, height: 800 },
     });
 
-    // Create a new page
     const page = await context.newPage();
 
-    // Set page-level timeouts
-    page.setDefaultTimeout(100000);
-    page.setDefaultNavigationTimeout(100000);
+    // Set timeouts close to limit with buffer
+    page.setDefaultTimeout(10000);
+    page.setDefaultNavigationTimeout(10000);
 
-    // Perform scraping
     const results = await scrapeWebsite(page, params);
 
-    // Return results with metadata
     return NextResponse.json({
       results,
       metadata: {
@@ -252,8 +225,6 @@ export async function POST(
     });
   } catch (error) {
     console.error("Comprehensive API error:", error);
-
-    // Detailed error response
     return NextResponse.json(
       {
         error: "Failed to perform search",
@@ -262,7 +233,6 @@ export async function POST(
       { status: 500 }
     );
   } finally {
-    // Ensure browser is closed
     if (browser) await browser.close();
   }
 }
