@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "vercel-build": "pnpm playwright install chromium --with-deps && pnpm build",
     "lint": "next lint"
   },
   "dependencies": {
