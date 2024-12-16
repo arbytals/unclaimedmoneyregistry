@@ -167,6 +167,9 @@ export default function Home() {
 
           {results.length > 0 && (
             <div className="space-y-4">
+              <h3 className="font-bold uppercase text-lg text-primaryBlue">
+                Search Results ({results.length})
+              </h3>
               {results.map((result, idx) => (
                 <div key={idx} className="p-4 border rounded-lg shadow-md">
                   <h3 className="font-extrabold text-primaryBlue py-4">
