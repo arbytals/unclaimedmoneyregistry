@@ -4,7 +4,7 @@
   "installCommand": "pnpm install",
   "framework": "nextjs",
   "functions": {
-    "api/search.ts": {
+    "api/search/route.ts": {
       "memory": 1024,
       "maxDuration": 10
     }
