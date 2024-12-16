@@ -1,5 +1,5 @@
 {
-  "buildCommand": "pnpm install && pnpm playwright install chromium && pnpm build",
+  "buildCommand": "pnpm install && pnpm playwright install chromium && pnpm dlx shadcn@latest init && pnpm build",
   "outputDirectory": ".next",
   "installCommand": "pnpm install",
   "framework": "nextjs",
