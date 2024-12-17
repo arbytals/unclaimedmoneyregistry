@@ -192,16 +192,22 @@ export async function POST(
       }
     }
 
-    browser = await chromium.launch({
-      headless: true,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-gpu",
-        "--disable-dev-shm-usage",
-      ],
-    });
-
+   browser = await chromium.launch({
+     headless: true,
+     args: [
+       "--no-sandbox",
+       "--disable-setuid-sandbox",
+       "--single-process",
+       "--no-zygote",
+       "--disable-gpu",
+       "--disable-dev-shm-usage",
+     ],
+     // Add these options for Vercel
+     executablePath:
+       process.env.NODE_ENV === "production"
+         ? "/tmp/chromium/chrome"
+         : undefined,
+   });
     const context = await browser.newContext({
       userAgent:
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
