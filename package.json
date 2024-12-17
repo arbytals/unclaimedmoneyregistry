@@ -4,8 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "pnpm install && pnpm exec playwright install chromium && pnpm next build",
-    "postbuild": "pnpm add -E @shadcn/ui",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
