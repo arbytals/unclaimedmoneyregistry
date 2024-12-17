@@ -1,5 +1,5 @@
 {
-  "buildCommand": "pnpm install && PLAYWRIGHT_BROWSERS_PATH=/tmp/ms-playwright pnpm exec playwright install chromium && pnpm build",
+  "buildCommand": "rm -rf .next && rm -rf node_modules/.cache && pnpm install && pnpm exec playwright install chromium --browser chromium && pnpm build",
   "outputDirectory": ".next",
   "installCommand": "pnpm install",
   "framework": "nextjs",
