@@ -1,7 +1,7 @@
 {
   "buildCommand": "pnpm install && pnpm exec playwright install chromium && pnpm build",
   "outputDirectory": ".next",
-  "installCommand": "pnpm install",
+  "installCommand": "pnpm install -E @shadcn/ui",
   "framework": "nextjs",
   "functions": {
     "app/api/search/route": {
