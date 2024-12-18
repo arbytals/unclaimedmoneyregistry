@@ -9,6 +9,9 @@ import {
 import { NextResponse } from "next/server";
 import path from "path";
 
+
+export const runtime = "edge";
+
 // Helper function to determine correct Chrome path
 const getChromePath = () => {
   // Local development - use system Chrome
