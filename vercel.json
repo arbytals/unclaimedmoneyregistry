@@ -1,14 +1,8 @@
 {
-  "version": 2,
-  "build": {
-    "env": {
-      "PLAYWRIGHT_BROWSERS_PATH": "/tmp"
+  "functions": {
+    "app/api/**/*": {
+      "memory": 1024,
+      "maxDuration": 10
     }
-  },
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "/"
-    }
-  ]
+  }
 }
