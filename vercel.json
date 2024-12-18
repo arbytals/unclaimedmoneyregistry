@@ -1,11 +1,11 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/next"
-    }
-  ],
+  "build": {
+    "env": {
+      "PLAYWRIGHT_BROWSERS_PATH": "/tmp"
+    },
+    "command": "pnpm vercel-build"
+  },
   "routes": [
     {
       "src": "/(.*)",
