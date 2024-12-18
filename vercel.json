@@ -2,8 +2,8 @@
   "version": 2,
   "builds": [
     {
-      "src": "next.config.ts",
-      "use": "@playwright/next"
+      "src": "package.json",
+      "use": "@vercel/next"
     }
   ],
   "routes": [
