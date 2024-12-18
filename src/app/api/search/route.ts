@@ -11,7 +11,7 @@ import path from "path";
 
 // Helper function to determine correct Chrome path
 const getChromePath = () => {
-  // Local development - use system Chrome
+  // Local development - use system Chrom
   if (process.env.NODE_ENV !== "production") {
     return undefined;
   }
