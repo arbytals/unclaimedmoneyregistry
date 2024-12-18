@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "vercel-build": "pnpm exec playwright install-deps && PLAYWRIGHT_BROWSERS_PATH=/tmp playwright install chromium && next build"
+    "vercel-build": "PLAYWRIGHT_BROWSERS_PATH=/tmp playwright install-deps install chromium && next build"
   },
   "dependencies": {
     "@playwright/browser-chromium": "^1.49.1",
