@@ -7,6 +7,29 @@ import {
   SearchError,
 } from "@/types/search";
 import { NextResponse } from "next/server";
+import path from "path";
+
+// Helper function to determine correct Chrome path
+const getChromePath = () => {
+  // Local development - use system Chrome
+  if (process.env.NODE_ENV !== "production") {
+    return undefined;
+  }
+
+  // Vercel - use installed Chrome package
+  if (process.env.VERCEL) {
+    return path.join(
+      process.cwd(),
+      "node_modules",
+      "@playwright/browser-chromium",
+      "chrome-linux",
+      "chrome"
+    );
+  }
+
+  // Default to /tmp path for other production environments
+  return "/tmp/chromium/chrome";
+};
 
 // Adjusted for 10s limit
 async function waitForPageLoad(page: Page, timeout: number = 10000) {
@@ -20,7 +43,6 @@ async function waitForPageLoad(page: Page, timeout: number = 10000) {
   }
 }
 
-// Result extraction function remains the same
 function extractResults(html: string): SearchResult[] {
   try {
     const $ = load(html);
@@ -136,7 +158,6 @@ async function scrapeWebsite(
         await page.click(personalButtonSelector);
       }
 
-      // Maximized timeouts while keeping buffer
       await Promise.race([
         page.waitForSelector("#printdiv11 table#example tbody tr", {
           timeout: 10000,
@@ -155,7 +176,6 @@ async function scrapeWebsite(
         throw new Error("No results found after all attempts");
       }
 
-      // Increased retry wait but still keeping buffer
       await page.waitForTimeout(750);
     } catch (error) {
       console.error(`Scraping attempt ${attempt} failed:`, error);
@@ -192,22 +212,19 @@ export async function POST(
       }
     }
 
-   browser = await chromium.launch({
-     headless: true,
-     args: [
-       "--no-sandbox",
-       "--disable-setuid-sandbox",
-       "--single-process",
-       "--no-zygote",
-       "--disable-gpu",
-       "--disable-dev-shm-usage",
-     ],
-     // Add these options for Vercel
-     executablePath:
-       process.env.NODE_ENV === "production"
-         ? "/tmp/chromium/chrome"
-         : undefined,
-   });
+    browser = await chromium.launch({
+      headless: true,
+      args: [
+        "--no-sandbox",
+        "--disable-setuid-sandbox",
+        "--single-process",
+        "--no-zygote",
+        "--disable-gpu",
+        "--disable-dev-shm-usage",
+      ],
+      executablePath: getChromePath(),
+    });
+
     const context = await browser.newContext({
       userAgent:
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
@@ -215,8 +232,6 @@ export async function POST(
     });
 
     const page = await context.newPage();
-
-    // Set timeouts close to limit with buffer
     page.setDefaultTimeout(10000);
     page.setDefaultNavigationTimeout(10000);
 
