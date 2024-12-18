@@ -3,8 +3,7 @@
   "build": {
     "env": {
       "PLAYWRIGHT_BROWSERS_PATH": "/tmp"
-    },
-    "command": "pnpm vercel-build"
+    }
   },
   "routes": [
     {
