@@ -4,5 +4,11 @@
       "memory": 1024,
       "maxDuration": 10
     }
-  }
+  },
+  "build": {
+    "env": {
+      "PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD": "1"
+    }
+  },
+  "installCommand": "apt-get update && apt-get install -y libnss3 libnspr4 libgbm1 && pnpm install"
 }
