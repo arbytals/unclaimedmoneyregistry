@@ -7,8 +7,29 @@ import {
   SearchError,
 } from "@/types/search";
 import { NextResponse } from "next/server";
+import path from "path";
 
-export const runtime = "edge";
+// Helper function to determine correct Chrome path
+const getChromePath = () => {
+  // Local development - use system Chrome
+  if (process.env.NODE_ENV !== "production") {
+    return undefined;
+  }
+
+  // Vercel - use installed Chrome package
+  if (process.env.VERCEL) {
+    return path.join(
+      process.cwd(),
+      "node_modules",
+      "@playwright/browser-chromium",
+      "chrome-linux",
+      "chrome"
+    );
+  }
+
+  // Default to /tmp path for other production environments
+  return "/tmp/chromium/chrome";
+};
 
 // Adjusted for 10s limit
 async function waitForPageLoad(page: Page, timeout: number = 10000) {
@@ -201,7 +222,7 @@ export async function POST(
         "--disable-gpu",
         "--disable-dev-shm-usage",
       ],
-      executablePath: process.env.VERCEL ? "/tmp/chromium/chrome" : undefined,
+      executablePath: getChromePath(),
     });
 
     const context = await browser.newContext({
