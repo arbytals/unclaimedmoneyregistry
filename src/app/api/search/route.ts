@@ -12,7 +12,7 @@ import puppeteer, { Browser, Page } from "puppeteer-core";
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 const MAX_RETRIES = 4;
 const RETRY_DELAY = 200;
-const PAGE_TIMEOUT = 14000;
+const PAGE_TIMEOUT = 30000; 
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -52,26 +52,50 @@ async function extractResults(html: string): Promise<SearchResult[]> {
 }
 
 async function getBrowser(): Promise<Browser> {
-   if (IS_PRODUCTION) {
-    // Skip font loading to save time
-    chromium.setHeadlessMode = true;
-  }
-
-  const executablePath = IS_PRODUCTION
-    ? await chromium.executablePath()
-    : process.platform === "win32"
-    ? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
-    : process.platform === "darwin"
-    ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-    : "/usr/bin/google-chrome";
-
-  return await puppeteer.launch({
-    args: chromium.args,
-    defaultViewport: chromium.defaultViewport,
-    executablePath,
+  const options = {
+    args: [
+      ...chromium.args,
+      '--disable-features=IsolateOrigins',
+      '--disable-site-isolation-trials',
+      '--disable-setuid-sandbox',
+      '--no-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--no-first-run',
+      '--no-zygote',
+      '--disable-gpu',
+      '--disable-audio-output',
+      '--disable-background-networking',
+      '--disable-background-timer-throttling',
+      '--disable-backgrounding-occluded-windows',
+      '--disable-breakpad',
+      '--disable-client-side-phishing-detection',
+      '--disable-component-extensions-with-background-pages',
+      '--disable-default-apps',
+      '--disable-extensions',
+      '--disable-hang-monitor',
+      '--disable-ipc-flooding-protection',
+      '--disable-popup-blocking',
+      '--disable-prompt-on-repost',
+      '--disable-sync',
+      '--disable-translate',
+      '--metrics-recording-only',
+      '--no-default-browser-check',
+      '--safebrowsing-disable-auto-update',
+    ],
+    defaultViewport: {
+      width: 1920,
+      height: 1080,
+    },
+    executablePath: IS_PRODUCTION ? await chromium.executablePath() : 
+      process.platform === "win32" ? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" :
+      process.platform === "darwin" ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" :
+      "/usr/bin/google-chrome",
     headless: true,
-    ignoreDefaultArgs: ["--disable-extensions"],
-  });
+    ignoreHTTPSErrors: true,
+  };
+
+  return await puppeteer.launch(options);
 }
 
 async function setupPage(browser: Browser): Promise<Page> {
@@ -79,21 +103,20 @@ async function setupPage(browser: Browser): Promise<Page> {
 
   if (IS_PRODUCTION) {
     await page.setRequestInterception(true);
-   page.on("request", (request) => {
-     const resourceType = request.resourceType();
+    page.on("request", (request) => {
+      const resourceType = request.resourceType();
 
-     // Block more resource types and specific patterns
-     if (
-       ["image", "stylesheet", "font", "media", "other", "script"].includes(
-         resourceType
-       ) 
-      
-     ) {
-       request.abort();
-     } else {
-       request.continue();
-     }
-   });
+      // Block more resource types and specific patterns
+      if (
+        ["image", "stylesheet", "font", "media", "other", "script"].includes(
+          resourceType
+        )
+      ) {
+        request.abort();
+      } else {
+        request.continue();
+      }
+    });
   }
 
   page.on("console", (msg) => console.log("Browser console:", msg.text()));
