@@ -4,10 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true next build",
     "start": "next start",
-    "lint": "next lint",
-    "vercel-build": "PLAYWRIGHT_BROWSERS_PATH=/tmp playwright install chromium && next build"
+    "lint": "next lint"
   },
   "dependencies": {
     "@playwright/browser-chromium": "^1.49.1",
@@ -36,6 +35,7 @@
   "devDependencies": {
     "@playwright/test": "^1.49.1",
     "@types/node": "^20.17.8",
+    "@types/puppeteer-core": "^7.0.4",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "eslint": "^8",

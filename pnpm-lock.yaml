@@ -81,6 +81,9 @@ importers:
       '@types/node':
         specifier: ^20.17.8
         version: 20.17.8
+      '@types/puppeteer-core':
+        specifier: ^7.0.4
+        version: 7.0.4
       '@types/react':
         specifier: ^18
         version: 18.3.12
@@ -573,6 +576,10 @@ packages:
 
   '@types/prop-types@15.7.13':
     resolution: {integrity: sha512-hCZTSvwbzWGvhqxp/RqVqwU999pBf2vp7hzIjiYOsl8wqOmUxkQ6ddw1cV3l8811+kdUFus/q4d1Y3E3SyEifA==}
+
+  '@types/puppeteer-core@7.0.4':
+    resolution: {integrity: sha512-7YK4lAjXTAsFN0HFWSRr43J1iQX+xoI5EXyOYnG6F+OhqkTR+L8bYnU8dqELrKmzvbSlxczh3F7dEBJ7TriqEw==}
+    deprecated: This is a stub types definition. puppeteer-core provides its own type definitions, so you do not need this installed.
 
   '@types/react-dom@18.3.1':
     resolution: {integrity: sha512-qW1Mfv8taImTthu4KoXgDfLuk4bydU6Q/TkADnDWWHwi4NX4BR+LWfTp2sVmTqRrsHvyDDTelgelxJ+SsejKKQ==}
@@ -2830,6 +2837,14 @@ snapshots:
       undici-types: 6.19.8
 
   '@types/prop-types@15.7.13': {}
+
+  '@types/puppeteer-core@7.0.4':
+    dependencies:
+      puppeteer-core: 23.11.0
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - utf-8-validate
 
   '@types/react-dom@18.3.1':
     dependencies:

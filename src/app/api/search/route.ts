@@ -1,49 +1,22 @@
-import { chromium, type Browser, type Page } from "playwright";
 import { load } from "cheerio";
-import {
+import type {
   SearchParams,
   SearchResult,
   SearchResponse,
   SearchError,
 } from "@/types/search";
 import { NextResponse } from "next/server";
-import path from "path";
+import chromium from "@sparticuz/chromium";
+import puppeteer, { Browser, Page } from "puppeteer-core";
 
-// Helper function to determine correct Chrome path
-const getChromePath = () => {
-  // Local development - use system Chrome
-  if (process.env.NODE_ENV !== "production") {
-    return undefined;
-  }
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+const MAX_RETRIES = 4;
+const RETRY_DELAY = 200;
+const PAGE_TIMEOUT = 9950;
 
-  // Vercel - use installed Chrome package
-  if (process.env.VERCEL) {
-    return path.join(
-      process.cwd(),
-      "node_modules",
-      "@playwright/browser-chromium",
-      "chrome-linux",
-      "chrome"
-    );
-  }
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-  // Default to /tmp path for other production environments
-  return "/tmp/chromium/chrome";
-};
-
-// Adjusted for 10s limit
-async function waitForPageLoad(page: Page, timeout: number = 10000) {
-  try {
-    await Promise.all([
-      page.waitForLoadState("domcontentloaded", { timeout }),
-      page.waitForLoadState("networkidle", { timeout }),
-    ]);
-  } catch (error) {
-    console.warn("Page load wait partial timeout:", error);
-  }
-}
-
-function extractResults(html: string): SearchResult[] {
+async function extractResults(html: string): Promise<SearchResult[]> {
   try {
     const $ = load(html);
     const results: SearchResult[] = [];
@@ -78,121 +51,181 @@ function extractResults(html: string): SearchResult[] {
   }
 }
 
-async function scrapeWebsite(
-  page: Page,
-  params: SearchParams,
-  retries: number = 5
-): Promise<SearchResult[]> {
-  const searchSelectors = {
-    companyNameInput: [
-      "#company_name",
-      'input[name="company_name"]',
-      'input[placeholder="Company Name"]',
-    ],
-    companySearchButton: [
-      "input.searchbutton_input2",
-      'button[type="submit"].company-search',
-      'input[value="Search Company"]',
-    ],
-    firstNameInput: [
-      "#first_name",
-      'input[name="first_name"]',
-      'input[placeholder="First Name"]',
-    ],
-    lastNameInput: [
-      "#sur_name",
-      'input[name="last_name"]',
-      'input[placeholder="Last Name"]',
-    ],
-    personalSearchButton: [
-      "input.searchbutton_input1",
-      'button[type="submit"].personal-search',
-      'input[value="Search Name"]',
-    ],
-  };
-
-  async function findSelector(selectors: string[]): Promise<string> {
-    for (const selector of selectors) {
-      try {
-        await page.waitForSelector(selector, { timeout: 10000 });
-        return selector;
-      } catch {}
-    }
-    throw new Error("No valid selector found");
+async function getBrowser(): Promise<Browser> {
+  if (IS_PRODUCTION) {
+    // Skip font loading to save time
+    chromium.setHeadlessMode = true;
   }
 
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      console.log(`Scraping attempt ${attempt}...`);
+  const executablePath = IS_PRODUCTION
+    ? await chromium.executablePath()
+    : process.platform === "win32"
+    ? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+    : process.platform === "darwin"
+    ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+    : "/usr/bin/google-chrome";
 
-      await page.goto("https://findunclaimedmoney.com.au", {
-        waitUntil: "domcontentloaded",
-        timeout: 10000,
-      });
+  return await puppeteer.launch({
+    args: chromium.args,
+    defaultViewport: chromium.defaultViewport,
+    executablePath,
+    headless: true,
+    ignoreDefaultArgs: ["--disable-extensions"],
+  });
+}
 
-      await waitForPageLoad(page);
+async function setupPage(browser: Browser): Promise<Page> {
+  const page = await browser.newPage();
 
-      if ("companyName" in params) {
-        const companyInputSelector = await findSelector(
-          searchSelectors.companyNameInput
-        );
-        const companyButtonSelector = await findSelector(
-          searchSelectors.companySearchButton
-        );
-
-        await page.fill(companyInputSelector, params.companyName);
-        await page.click(companyButtonSelector);
+  if (IS_PRODUCTION) {
+    await page.setRequestInterception(true);
+    page.on("request", (request) => {
+      const resourceType = request.resourceType();
+      if (
+        ["image", "stylesheet", "font", "media", "other"].includes(resourceType)
+      ) {
+        request.abort();
       } else {
-        const firstNameSelector = await findSelector(
-          searchSelectors.firstNameInput
-        );
-        const lastNameSelector = await findSelector(
-          searchSelectors.lastNameInput
-        );
-        const personalButtonSelector = await findSelector(
-          searchSelectors.personalSearchButton
-        );
-
-        await page.fill(firstNameSelector, params.firstName);
-        await page.fill(lastNameSelector, params.lastName);
-        await page.click(personalButtonSelector);
+        request.continue();
       }
-
-      await Promise.race([
-        page.waitForSelector("#printdiv11 table#example tbody tr", {
-          timeout: 10000,
-        }),
-        page.waitForSelector(".search-results", { timeout: 10000 }),
-      ]);
-
-      const html = await page.content();
-      const results = extractResults(html);
-
-      if (results.length > 0) {
-        return results;
-      }
-
-      if (attempt === retries) {
-        throw new Error("No results found after all attempts");
-      }
-
-      await page.waitForTimeout(750);
-    } catch (error) {
-      console.error(`Scraping attempt ${attempt} failed:`, error);
-      if (attempt === retries) {
-        throw error;
-      }
-    }
+    });
   }
 
-  return [];
+  page.on("console", (msg) => console.log("Browser console:", msg.text()));
+  page.on("requestfailed", (request) => {
+    console.log(`Request failed: ${request.url()}`);
+    const failure = request.failure();
+    console.log(`Error: ${failure?.errorText ?? "Unknown error"}`);
+  });
+
+  await page.setDefaultNavigationTimeout(PAGE_TIMEOUT);
+  await page.setDefaultTimeout(PAGE_TIMEOUT);
+
+  await page.setUserAgent(
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+  );
+
+  await page.setExtraHTTPHeaders({
+    "Accept-Language": "en-US,en;q=0.9",
+    Connection: "keep-alive",
+  });
+
+  return page;
+}
+
+async function performSearch(page: Page, params: SearchParams): Promise<void> {
+  await page.waitForSelector("#company_name, #first_name", {
+    timeout: PAGE_TIMEOUT,
+  });
+
+  console.log("Form found, proceeding with search");
+
+  if ("companyName" in params) {
+    await page.evaluate(() => {
+      const element = document.querySelector<HTMLInputElement>("#company_name");
+      if (element) element.value = "";
+    });
+    await page.type("#company_name", params.companyName, { delay: 70 });
+
+    const button = await page.waitForSelector("input.searchbutton_input2", {
+      timeout: PAGE_TIMEOUT,
+    });
+    if (!button) throw new Error("Search button not found");
+
+    await Promise.all([
+      page.waitForNavigation({
+        waitUntil: "networkidle0",
+        timeout: PAGE_TIMEOUT,
+      }),
+      button.click(),
+    ]);
+  } else {
+    await page.evaluate(() => {
+      const firstNameEl =
+        document.querySelector<HTMLInputElement>("#first_name");
+      const surNameEl = document.querySelector<HTMLInputElement>("#sur_name");
+      if (firstNameEl) firstNameEl.value = "";
+      if (surNameEl) surNameEl.value = "";
+    });
+
+    await page.type("#first_name", params.firstName, { delay: 70 });
+    await page.type("#sur_name", params.lastName, { delay: 70 });
+
+    const button = await page.waitForSelector("input.searchbutton_input1", {
+      timeout: PAGE_TIMEOUT,
+    });
+    if (!button) throw new Error("Search button not found");
+
+    await Promise.all([
+      page.waitForNavigation({
+        waitUntil: "networkidle0",
+        timeout: PAGE_TIMEOUT,
+      }),
+      button.click(),
+    ]);
+  }
+
+  try {
+    await Promise.race([
+      page.waitForSelector("#printdiv11 table#example", {
+        timeout: PAGE_TIMEOUT,
+      }),
+      page.waitForSelector(".no-results", { timeout: PAGE_TIMEOUT }),
+      page.waitForSelector("#no-results", { timeout: PAGE_TIMEOUT }),
+      page.waitForSelector("text/No records found", { timeout: PAGE_TIMEOUT }),
+    ]);
+  } catch (error) {
+    if (!IS_PRODUCTION) {
+      await page.screenshot({ path: "debug-screenshot.png", fullPage: true });
+    }
+    console.log("Current page URL:", page.url());
+    console.log("Page content:", await page.content());
+    throw error;
+  }
+}
+
+async function scrapeWithRetry(
+  params: SearchParams,
+  retryCount = 0
+): Promise<SearchResult[]> {
+  const browser = await getBrowser();
+  let page: Page | null = null;
+
+  try {
+    page = await setupPage(browser);
+    console.log("Starting navigation to website");
+
+    await page.goto("https://findunclaimedmoney.com.au", {
+      waitUntil: "networkidle0",
+      timeout: PAGE_TIMEOUT,
+    });
+
+    console.log("Navigation complete, performing search");
+    await performSearch(page, params);
+
+    console.log("Search complete, extracting results");
+    const html = await page.content();
+    return await extractResults(html);
+  } catch (error) {
+    console.error(`Attempt ${retryCount + 1} failed:`, error);
+
+    if (retryCount < MAX_RETRIES) {
+      console.log(
+        `Retrying... Attempt ${retryCount + 2} of ${MAX_RETRIES + 1}`
+      );
+      await sleep(RETRY_DELAY);
+      return scrapeWithRetry(params, retryCount + 1);
+    }
+    throw error;
+  } finally {
+    if (page) await page.close();
+    await browser.close();
+  }
 }
 
 export async function POST(
   request: Request
 ): Promise<NextResponse<SearchResponse | SearchError>> {
-  let browser: Browser | null = null;
-
   try {
     const params = (await request.json()) as SearchParams;
 
@@ -212,30 +245,9 @@ export async function POST(
       }
     }
 
-    browser = await chromium.launch({
-      headless: true,
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--single-process",
-        "--no-zygote",
-        "--disable-gpu",
-        "--disable-dev-shm-usage",
-      ],
-      executablePath: getChromePath(),
-    });
-
-    const context = await browser.newContext({
-      userAgent:
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-      viewport: { width: 1280, height: 800 },
-    });
-
-    const page = await context.newPage();
-    page.setDefaultTimeout(10000);
-    page.setDefaultNavigationTimeout(10000);
-
-    const results = await scrapeWebsite(page, params);
+    console.log("Starting search with params:", params);
+    const results = await scrapeWithRetry(params);
+    console.log("Search completed, results:", results.length);
 
     return NextResponse.json({
       results,
@@ -245,7 +257,7 @@ export async function POST(
       },
     });
   } catch (error) {
-    console.error("Comprehensive API error:", error);
+    console.error("API error:", error);
     return NextResponse.json(
       {
         error: "Failed to perform search",
@@ -253,7 +265,5 @@ export async function POST(
       },
       { status: 500 }
     );
-  } finally {
-    if (browser) await browser.close();
   }
 }
