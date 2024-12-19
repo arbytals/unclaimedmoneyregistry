@@ -12,7 +12,7 @@ import puppeteer, { Browser, Page } from "puppeteer-core";
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 const MAX_RETRIES = 4;
 const RETRY_DELAY = 200;
-const PAGE_TIMEOUT = 14500;
+const PAGE_TIMEOUT = 14000;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -53,9 +53,9 @@ async function extractResults(html: string): Promise<SearchResult[]> {
 
 async function getBrowser(): Promise<Browser> {
    if (IS_PRODUCTION) {
-     // Skip font loading to save time
-     chromium.setHeadlessMode = true;
-   }
+    // Skip font loading to save time
+    chromium.setHeadlessMode = true;
+  }
 
   const executablePath = IS_PRODUCTION
     ? await chromium.executablePath()
@@ -79,14 +79,21 @@ async function setupPage(browser: Browser): Promise<Page> {
 
   if (IS_PRODUCTION) {
     await page.setRequestInterception(true);
-  page.on("request", (request) => {
-    const resourceType = request.resourceType();
-    if (["image", "stylesheet", "font", "media", "other"].includes(resourceType)) {
-      request.abort();
-    } else {
-      request.continue();
-    }
-  });
+   page.on("request", (request) => {
+     const resourceType = request.resourceType();
+
+     // Block more resource types and specific patterns
+     if (
+       ["image", "stylesheet", "font", "media", "other", "script"].includes(
+         resourceType
+       ) 
+      
+     ) {
+       request.abort();
+     } else {
+       request.continue();
+     }
+   });
   }
 
   page.on("console", (msg) => console.log("Browser console:", msg.text()));
@@ -123,7 +130,7 @@ async function performSearch(page: Page, params: SearchParams): Promise<void> {
       const element = document.querySelector<HTMLInputElement>("#company_name");
       if (element) element.value = "";
     });
-    await page.type("#company_name", params.companyName, { delay: 100 });
+    await page.type("#company_name", params.companyName, { delay: 80 });
 
     const button = await page.waitForSelector("input.searchbutton_input2", {
       timeout: PAGE_TIMEOUT,
@@ -146,8 +153,8 @@ async function performSearch(page: Page, params: SearchParams): Promise<void> {
       if (surNameEl) surNameEl.value = "";
     });
 
-    await page.type("#first_name", params.firstName, { delay: 100 });
-    await page.type("#sur_name", params.lastName, { delay: 100 });
+    await page.type("#first_name", params.firstName, { delay: 80 });
+    await page.type("#sur_name", params.lastName, { delay: 80 });
 
     const button = await page.waitForSelector("input.searchbutton_input1", {
       timeout: PAGE_TIMEOUT,
