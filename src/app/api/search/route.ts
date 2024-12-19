@@ -123,7 +123,7 @@ async function performSearch(page: Page, params: SearchParams): Promise<void> {
       const element = document.querySelector<HTMLInputElement>("#company_name");
       if (element) element.value = "";
     });
-    await page.type("#company_name", params.companyName, { delay: 70 });
+    await page.type("#company_name", params.companyName, { delay: 100 });
 
     const button = await page.waitForSelector("input.searchbutton_input2", {
       timeout: PAGE_TIMEOUT,
@@ -146,8 +146,8 @@ async function performSearch(page: Page, params: SearchParams): Promise<void> {
       if (surNameEl) surNameEl.value = "";
     });
 
-    await page.type("#first_name", params.firstName, { delay: 70 });
-    await page.type("#sur_name", params.lastName, { delay: 70 });
+    await page.type("#first_name", params.firstName, { delay: 100 });
+    await page.type("#sur_name", params.lastName, { delay: 100 });
 
     const button = await page.waitForSelector("input.searchbutton_input1", {
       timeout: PAGE_TIMEOUT,
