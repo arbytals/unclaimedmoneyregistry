@@ -10,9 +10,9 @@ import chromium from "@sparticuz/chromium";
 import puppeteer, { Browser, Page } from "puppeteer-core";
 
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
-const MAX_RETRIES = 4;
-const RETRY_DELAY = 200;
-const PAGE_TIMEOUT = 9950;
+const MAX_RETRIES = 3;
+const RETRY_DELAY = 50;
+const PAGE_TIMEOUT = 9800;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -125,7 +125,7 @@ async function performSearch(page: Page, params: SearchParams): Promise<void> {
       const element = document.querySelector<HTMLInputElement>("#company_name");
       if (element) element.value = "";
     });
-    await page.type("#company_name", params.companyName, { delay: 70 });
+    await page.type("#company_name", params.companyName, { delay: 20 });
 
     const button = await page.waitForSelector("input.searchbutton_input2", {
       timeout: PAGE_TIMEOUT,
@@ -148,8 +148,8 @@ async function performSearch(page: Page, params: SearchParams): Promise<void> {
       if (surNameEl) surNameEl.value = "";
     });
 
-    await page.type("#first_name", params.firstName, { delay: 70 });
-    await page.type("#sur_name", params.lastName, { delay: 70 });
+    await page.type("#first_name", params.firstName, { delay: 20 });
+    await page.type("#sur_name", params.lastName, { delay: 20 });
 
     const button = await page.waitForSelector("input.searchbutton_input1", {
       timeout: PAGE_TIMEOUT,
