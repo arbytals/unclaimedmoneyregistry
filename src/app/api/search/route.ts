@@ -12,85 +12,34 @@ import puppeteer, { Browser, Page } from "puppeteer-core";
 const IS_PRODUCTION = process.env.NODE_ENV === "production";
 const MAX_RETRIES = 4;
 const RETRY_DELAY = 200;
-const PAGE_TIMEOUT = 30000; 
+const PAGE_TIMEOUT = 30000;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-async function extractResults(html: string): Promise<SearchResult[]> {
-  try {
-    const $ = load(html);
-    const results: SearchResult[] = [];
-    const table = $("#printdiv11 table#example");
-
-    table.find("tbody tr").each((_, row) => {
-      const $row = $(row);
-      const cells = $row.find("td.search_row");
-
-      if (cells.length >= 4) {
-        const result: SearchResult = {
-          name: $(cells[0]).text().trim(),
-          address: $(cells[1]).text().trim(),
-          amount: (() => {
-            const rawAmount = $(cells[2]).text().trim();
-            const cleanAmount = rawAmount.replace(/[^\d.]/g, "");
-            return parseFloat(cleanAmount) || 0;
-          })(),
-          type: $(cells[3]).text().trim(),
-        };
-
-        if (result.name && result.address && result.amount > 0 && result.type) {
-          results.push(result);
-        }
-      }
-    });
-
-    return results;
-  } catch (error) {
-    console.error("Result extraction error:", error);
-    return [];
-  }
-}
 
 async function getBrowser(): Promise<Browser> {
   const options = {
     args: [
       ...chromium.args,
-      '--disable-features=IsolateOrigins',
-      '--disable-site-isolation-trials',
-      '--disable-setuid-sandbox',
-      '--no-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-accelerated-2d-canvas',
-      '--no-first-run',
-      '--no-zygote',
-      '--disable-gpu',
-      '--disable-audio-output',
-      '--disable-background-networking',
-      '--disable-background-timer-throttling',
-      '--disable-backgrounding-occluded-windows',
-      '--disable-breakpad',
-      '--disable-client-side-phishing-detection',
-      '--disable-component-extensions-with-background-pages',
-      '--disable-default-apps',
-      '--disable-extensions',
-      '--disable-hang-monitor',
-      '--disable-ipc-flooding-protection',
-      '--disable-popup-blocking',
-      '--disable-prompt-on-repost',
-      '--disable-sync',
-      '--disable-translate',
-      '--metrics-recording-only',
-      '--no-default-browser-check',
-      '--safebrowsing-disable-auto-update',
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--disable-gpu",
+      "--no-first-run",
+      "--no-zygote",
+      "--single-process", // Important for Render
+      "--disable-extensions",
     ],
     defaultViewport: {
-      width: 1920,
-      height: 1080,
+      width: 1024,
+      height: 768,
     },
-    executablePath: IS_PRODUCTION ? await chromium.executablePath() : 
-      process.platform === "win32" ? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" :
-      process.platform === "darwin" ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" :
-      "/usr/bin/google-chrome",
+    executablePath: IS_PRODUCTION
+      ? await chromium.executablePath()
+      : process.platform === "win32"
+      ? "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe"
+      : process.platform === "darwin"
+      ? "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+      : "/usr/bin/google-chrome",
     headless: true,
     ignoreHTTPSErrors: true,
   };
@@ -101,153 +50,128 @@ async function getBrowser(): Promise<Browser> {
 async function setupPage(browser: Browser): Promise<Page> {
   const page = await browser.newPage();
 
-  if (IS_PRODUCTION) {
-    await page.setRequestInterception(true);
-    page.on("request", (request) => {
-      const resourceType = request.resourceType();
-
-      // Block more resource types and specific patterns
-      if (
-        ["image", "stylesheet", "font", "media", "other", "script"].includes(
-          resourceType
-        )
-      ) {
-        request.abort();
-      } else {
-        request.continue();
-      }
-    });
-  }
-
-  page.on("console", (msg) => console.log("Browser console:", msg.text()));
-  page.on("requestfailed", (request) => {
-    console.log(`Request failed: ${request.url()}`);
-    const failure = request.failure();
-    console.log(`Error: ${failure?.errorText ?? "Unknown error"}`);
+  // Minimal request interception
+  await page.setRequestInterception(true);
+  page.on("request", (request) => {
+    const resourceType = request.resourceType();
+    if (["image", "stylesheet", "font", "media"].includes(resourceType)) {
+      request.abort();
+    } else {
+      request.continue();
+    }
   });
 
-  await page.setDefaultNavigationTimeout(PAGE_TIMEOUT);
-  await page.setDefaultTimeout(PAGE_TIMEOUT);
-
+  // Set minimal required headers
   await page.setUserAgent(
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
   );
-
-  await page.setExtraHTTPHeaders({
-    "Accept-Language": "en-US,en;q=0.9",
-    Connection: "keep-alive",
-  });
 
   return page;
 }
 
 async function performSearch(page: Page, params: SearchParams): Promise<void> {
-  await page.waitForSelector("#company_name, #first_name", {
-    timeout: PAGE_TIMEOUT,
-  });
-
-  console.log("Form found, proceeding with search");
-
-  if ("companyName" in params) {
-    await page.evaluate(() => {
-      const element = document.querySelector<HTMLInputElement>("#company_name");
-      if (element) element.value = "";
-    });
-    await page.type("#company_name", params.companyName, { delay: 80 });
-
-    const button = await page.waitForSelector("input.searchbutton_input2", {
-      timeout: PAGE_TIMEOUT,
-    });
-    if (!button) throw new Error("Search button not found");
-
-    await Promise.all([
-      page.waitForNavigation({
-        waitUntil: "networkidle0",
-        timeout: PAGE_TIMEOUT,
-      }),
-      button.click(),
-    ]);
-  } else {
-    await page.evaluate(() => {
-      const firstNameEl =
-        document.querySelector<HTMLInputElement>("#first_name");
-      const surNameEl = document.querySelector<HTMLInputElement>("#sur_name");
-      if (firstNameEl) firstNameEl.value = "";
-      if (surNameEl) surNameEl.value = "";
-    });
-
-    await page.type("#first_name", params.firstName, { delay: 80 });
-    await page.type("#sur_name", params.lastName, { delay: 80 });
-
-    const button = await page.waitForSelector("input.searchbutton_input1", {
-      timeout: PAGE_TIMEOUT,
-    });
-    if (!button) throw new Error("Search button not found");
-
-    await Promise.all([
-      page.waitForNavigation({
-        waitUntil: "networkidle0",
-        timeout: PAGE_TIMEOUT,
-      }),
-      button.click(),
-    ]);
-  }
-
   try {
+    await page.goto("https://findunclaimedmoney.com.au", {
+      waitUntil: "networkidle0",
+      timeout: PAGE_TIMEOUT,
+    });
+
+    // Wait for either input to be available
     await Promise.race([
-      page.waitForSelector("#printdiv11 table#example", {
-        timeout: PAGE_TIMEOUT,
-      }),
-      page.waitForSelector(".no-results", { timeout: PAGE_TIMEOUT }),
-      page.waitForSelector("#no-results", { timeout: PAGE_TIMEOUT }),
-      page.waitForSelector("text/No records found", { timeout: PAGE_TIMEOUT }),
+      page.waitForSelector("#company_name"),
+      page.waitForSelector("#first_name"),
     ]);
-  } catch (error) {
-    if (!IS_PRODUCTION) {
-      await page.screenshot({ path: "debug-screenshot.png", fullPage: true });
+
+    if ("companyName" in params) {
+      await page.type("#company_name", params.companyName);
+      await Promise.all([
+        page.click("input.searchbutton_input2"),
+        page.waitForNavigation({ waitUntil: "networkidle0" }),
+      ]);
+    } else {
+      await page.type("#first_name", params.firstName);
+      await page.type("#sur_name", params.lastName);
+      await Promise.all([
+        page.click("input.searchbutton_input1"),
+        page.waitForNavigation({ waitUntil: "networkidle0" }),
+      ]);
     }
-    console.log("Current page URL:", page.url());
-    console.log("Page content:", await page.content());
+
+    // Wait for results or no results indicator
+    await page.waitForFunction(
+      () => {
+        const table = document.querySelector("#printdiv11 table#example");
+        const noResults = document.querySelector(".no-results, #no-results");
+        return table || noResults;
+      },
+      { timeout: PAGE_TIMEOUT }
+    );
+  } catch (error) {
+    console.error(
+      "Search error:",
+      error instanceof Error ? error.message : "Unknown error"
+    );
     throw error;
   }
+}
+
+async function extractResults(html: string): Promise<SearchResult[]> {
+  const $ = load(html);
+  const results: SearchResult[] = [];
+
+  $("#printdiv11 table#example tbody tr").each((_, row) => {
+    const cells = $(row).find("td.search_row");
+    if (cells.length >= 4) {
+      const result: SearchResult = {
+        name: $(cells[0]).text().trim(),
+        address: $(cells[1]).text().trim(),
+        amount:
+          parseFloat(
+            $(cells[2])
+              .text()
+              .replace(/[^\d.]/g, "")
+          ) || 0,
+        type: $(cells[3]).text().trim(),
+      };
+
+      if (result.name && result.amount > 0) {
+        results.push(result);
+      }
+    }
+  });
+
+  return results;
 }
 
 async function scrapeWithRetry(
   params: SearchParams,
   retryCount = 0
 ): Promise<SearchResult[]> {
-  const browser = await getBrowser();
+  let browser: Browser | null = null;
   let page: Page | null = null;
 
   try {
+    browser = await getBrowser();
     page = await setupPage(browser);
-    console.log("Starting navigation to website");
 
-    await page.goto("https://findunclaimedmoney.com.au", {
-      waitUntil: "networkidle0",
-      timeout: PAGE_TIMEOUT,
-    });
-
-    console.log("Navigation complete, performing search");
     await performSearch(page, params);
 
-    console.log("Search complete, extracting results");
-    const html = await page.content();
-    return await extractResults(html);
+    const content = await page.content();
+    return await extractResults(content);
   } catch (error) {
-    console.error(`Attempt ${retryCount + 1} failed:`, error);
+    console.error(
+      `Attempt ${retryCount + 1} failed:`,
+      error instanceof Error ? error.message : "Unknown error"
+    );
 
     if (retryCount < MAX_RETRIES) {
-      console.log(
-        `Retrying... Attempt ${retryCount + 2} of ${MAX_RETRIES + 1}`
-      );
-      await sleep(RETRY_DELAY);
+      await sleep(RETRY_DELAY * (retryCount + 1));
       return scrapeWithRetry(params, retryCount + 1);
     }
     throw error;
   } finally {
     if (page) await page.close();
-    await browser.close();
+    if (browser) await browser.close();
   }
 }
 
@@ -257,6 +181,7 @@ export async function POST(
   try {
     const params = (await request.json()) as SearchParams;
 
+    // Validate params
     if ("companyName" in params) {
       if (!params.companyName?.trim()) {
         return NextResponse.json(
@@ -264,18 +189,14 @@ export async function POST(
           { status: 400 }
         );
       }
-    } else {
-      if (!params.firstName?.trim() || !params.lastName?.trim()) {
-        return NextResponse.json(
-          { error: "First name and last name are required" },
-          { status: 400 }
-        );
-      }
+    } else if (!params.firstName?.trim() || !params.lastName?.trim()) {
+      return NextResponse.json(
+        { error: "First name and last name are required" },
+        { status: 400 }
+      );
     }
 
-    console.log("Starting search with params:", params);
     const results = await scrapeWithRetry(params);
-    console.log("Search completed, results:", results.length);
 
     return NextResponse.json({
       results,
@@ -285,11 +206,16 @@ export async function POST(
       },
     });
   } catch (error) {
-    console.error("API error:", error);
+    // Only log minimal error information
+    console.error(
+      "Search failed:",
+      error instanceof Error ? error.message : "Unknown error"
+    );
+
     return NextResponse.json(
       {
         error: "Failed to perform search",
-        details: error instanceof Error ? error.message : String(error),
+        details: error instanceof Error ? error.message : "Unknown error",
       },
       { status: 500 }
     );
