@@ -19,7 +19,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 async function getBrowser(): Promise<Browser> {
   const options = {
     args: [
-      ...chromium.args,
+      ...chromium.args, 
       "--no-sandbox",
       "--disable-setuid-sandbox",
       "--disable-dev-shm-usage",
