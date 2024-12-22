@@ -19,7 +19,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 async function getBrowser(): Promise<Browser> {
   const options = {
     args: [
-      ...chromium.args, 
+      ...chromium.args,
       "--no-sandbox",
       "--disable-setuid-sandbox",
       "--disable-dev-shm-usage",
@@ -69,14 +69,16 @@ async function setupPage(browser: Browser): Promise<Page> {
   return page;
 }
 
-async function performSearch(page: Page, params: SearchParams): Promise<void> {
+async function performSearch(
+  page: Page,
+  params: SearchParams
+): Promise<string | null> {
   try {
     await page.goto("https://findunclaimedmoney.com.au", {
       waitUntil: "networkidle0",
       timeout: PAGE_TIMEOUT,
     });
 
-    // Wait for either input to be available
     await Promise.race([
       page.waitForSelector("#company_name"),
       page.waitForSelector("#first_name"),
@@ -97,15 +99,31 @@ async function performSearch(page: Page, params: SearchParams): Promise<void> {
       ]);
     }
 
-    // Wait for results or no results indicator
+    // Wait for either results table or no results message
     await page.waitForFunction(
       () => {
         const table = document.querySelector("#printdiv11 table#example");
-        const noResults = document.querySelector(".no-results, #no-results");
-        return table || noResults;
+        const recordsText = document.body.innerText.match(
+          /Number of record\(s\) found for search:\s*(\d+)/
+        );
+        return table || recordsText;
       },
       { timeout: PAGE_TIMEOUT }
     );
+
+    // Check for zero records
+    const hasNoRecords = await page.evaluate(() => {
+      const recordsMatch = document.body.innerText.match(
+        /Number of record\(s\) found for search:\s*(\d+)/
+      );
+      return recordsMatch && recordsMatch[1] === "0";
+    });
+
+    if (hasNoRecords) {
+      return "NO_RECORDS";
+    }
+
+    return null;
   } catch (error) {
     console.error(
       "Search error:",
@@ -146,7 +164,7 @@ async function extractResults(html: string): Promise<SearchResult[]> {
 async function scrapeWithRetry(
   params: SearchParams,
   retryCount = 0
-): Promise<SearchResult[]> {
+): Promise<SearchResult[] | "NO_RECORDS"> {
   let browser: Browser | null = null;
   let page: Page | null = null;
 
@@ -154,7 +172,12 @@ async function scrapeWithRetry(
     browser = await getBrowser();
     page = await setupPage(browser);
 
-    await performSearch(page, params);
+    const searchResult = await performSearch(page, params);
+
+    // Return immediately if no records found
+    if (searchResult === "NO_RECORDS") {
+      return "NO_RECORDS";
+    }
 
     const content = await page.content();
     return await extractResults(content);
@@ -198,15 +221,28 @@ export async function POST(
 
     const results = await scrapeWithRetry(params);
 
-    return NextResponse.json({
-      results,
+    // Handle no records case
+    if (results === "NO_RECORDS") {
+      return NextResponse.json<SearchResponse>({
+        results: [], // Empty array instead of string
+        metadata: {
+          totalResults: 0,
+          searchParams: params,
+        },
+        message:
+          "This name doesn't exist in our database. Please try another name search.",
+      });
+    }
+
+    // Then handle the normal results case
+    return NextResponse.json<SearchResponse>({
+      results: results as SearchResult[], // Type assertion since we know it's not "NO_RECORDS" at this point
       metadata: {
-        totalResults: results.length,
+        totalResults: (results as SearchResult[]).length,
         searchParams: params,
       },
     });
   } catch (error) {
-    // Only log minimal error information
     console.error(
       "Search failed:",
       error instanceof Error ? error.message : "Unknown error"

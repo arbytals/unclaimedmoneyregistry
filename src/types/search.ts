@@ -22,6 +22,7 @@ export interface SearchResponse {
     totalResults: number;
     searchParams: SearchParams;
   };
+  message?: string;
 }
 
 export interface SearchError {

@@ -163,7 +163,21 @@ export default function Home() {
           </div>
 
           {/* Results */}
-          {error && <div className="text-red-500">{error}</div>}
+          {/* Results Section Update */}
+          {error && (
+            <div className="mt-4 rounded-lg p-4">
+              {error === "No results found." ? (
+                <div className="space-y-4">
+                  <p className="text-lg text-red-600 mt-2">
+                    This name doesn&apos;t exist in our database. Please try
+                    another name search.
+                  </p>
+                </div>
+              ) : (
+                <div className="text-red-500">{error}</div>
+              )}
+            </div>
+          )}
 
           {results.length > 0 && (
             <div className="space-y-4">
