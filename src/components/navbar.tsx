@@ -41,10 +41,10 @@ export function SiteHeader() {
           />
         </Link>
       </div>
-      <nav className="bg-gradient-to-r from-gray-700 to-gray-900 shadow-lg">
-        <div className="container mx-auto">
+      {/* <nav className="bg-gradient-to-r from-gray-700 to-gray-900 shadow-lg">
+        <div className="container mx-auto"> */}
           {/* Mobile Navigation */}
-          <div className="lg:hidden relative hover:bg-none">
+          {/* <div className="lg:hidden relative hover:bg-none">
             <Button
               variant="ghost"
               className="text-white p-2 m-2 flex items-center w-full justify-between"
@@ -72,10 +72,10 @@ export function SiteHeader() {
                 </Link>
               ))}
             </div>
-          </div>
+          </div> */}
 
           {/* Desktop Navigation */}
-          <ul className="hidden lg:flex">
+          {/* <ul className="hidden lg:flex">
             {navigationItems.map((item) => (
               <li key={item.href} className="flex-1">
                 <Link
@@ -91,7 +91,7 @@ export function SiteHeader() {
             ))}
           </ul>
         </div>
-      </nav>
+      </nav> */}
     </header>
   );
 }

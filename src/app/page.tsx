@@ -93,9 +93,10 @@ export default function Home() {
               height={100}
             />
           </div>
+          <div className="flex items-center text-center pb-20 justify-center font-extrabold text-3xl text-gray-500 pt-32">For now, this project is paused</div>
 
           {/* Info */}
-          <div className="text-center space-y-2">
+          {/* <div className="text-center space-y-2">
             <p className="text-sm">
               Our FREE search collaborates all of the information kept on
               Australian & New Zealand Government databases and makes it easy
@@ -107,11 +108,11 @@ export default function Home() {
               finding unclaimed monies on behalf of people that believe they may
               possibly have money owing to them.
             </p>
-          </div>
+          </div> */}
           {/* Forms */}
-          <div className="grid md:grid-cols-2 gap-6">
+          {/* <div className="grid md:grid-cols-2 gap-6"> */}
             {/* Person Search */}
-            <form
+            {/* <form
               onSubmit={(e) => handleSearch(e, false)}
               className="p-4 border-2 border-primaryBlue rounded-lg space-y-3">
               <h2 className="text-center text-primaryBlue font-bold">
@@ -137,10 +138,10 @@ export default function Home() {
                 disabled={loading}>
                 {loading ? <Loader2 className="animate-spin" /> : "SEARCH"}
               </Button>
-            </form>
+            </form> */}
 
             {/* Company Search */}
-            <form
+            {/* <form
               onSubmit={(e) => handleSearch(e, true)}
               className="p-4 border-2 border-primaryBlue rounded-lg space-y-3">
               <h2 className="text-center text-primaryBlue font-bold">
@@ -160,11 +161,11 @@ export default function Home() {
                 {loading ? <Loader2 className="animate-spin" /> : "SEARCH"}
               </Button>
             </form>
-          </div>
+          </div> */}
 
           {/* Results */}
           {/* Results Section Update */}
-          {error && (
+          {/* {error && (
             <div className="mt-4 rounded-lg p-4">
               {error === "No results found." ? (
                 <div className="space-y-4">
@@ -207,7 +208,7 @@ export default function Home() {
                 </div>
               ))}
             </div>
-          )}
+          )} */}
         </div>
 
         {/* Sidebar */}
